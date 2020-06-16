@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
+# %%
 
 # # Building first level models using _nipype_ and _SPM12_
 # 
@@ -38,7 +39,7 @@
 # 
 # * import required modules and define parameters
 
-# In[1]:
+# %%
 
 
 import os  # system functions
@@ -71,7 +72,7 @@ import pandas as pd
 # #### Matlab path
 # 
 
-# In[2]:
+# %%
 
 
 # Set the way matlab should be called
@@ -87,7 +88,7 @@ mlab.MatlabCommand.set_default_paths(PATH_TO_SPM_FOLDER)
 
 # #### Load JSON model config
 
-# In[5]:
+# %%
 
 
 JSON_MODEL_FILE = os.path.join('/data00/projects/megameta/scripts/jupyter_megameta/first_level_models',
@@ -95,14 +96,14 @@ JSON_MODEL_FILE = os.path.join('/data00/projects/megameta/scripts/jupyter_megame
                                MODEL_SPEC_FILE)
 
 
-# In[6]:
+# %%
 
 
 with open(JSON_MODEL_FILE) as fh:
     model_def = json.load(fh)
 
 
-# In[7]:
+# %%
 
 
 TASK_NAME = model_def['TaskName']
@@ -111,7 +112,7 @@ MODEL_NAME = model_def['ModelName']
 PROJECT_NAME = model_def['ProjectID']
 
 
-# In[8]:
+# %%
 
 
 PROJECT_DIR = os.path.join('/data00/projects/megameta', PROJECT_NAME)
@@ -131,7 +132,7 @@ working_dir = os.path.join(PROJECT_DIR, 'working',
 
 
 
-# In[9]:
+# %%
 
 
 # check to see if output and work directories exist
@@ -143,7 +144,7 @@ if not os.path.exists(working_dir):
     os.makedirs(working_dir)
 
 
-# In[4]:
+# %%
 
 
 
@@ -171,7 +172,7 @@ print('\n\nSUBJECT LIST IS:\n\t', ' '.join(subject_list))
 #     * https://nipype.readthedocs.io/en/latest/users/model_specification.html
 # * read the onsets/dur/conditions from task logs and extract needed data
 
-# In[9]:
+# %%
 
 
 def get_subject_info(subject_id, model_path, DEBUG=False):
@@ -399,7 +400,7 @@ def get_subject_info(subject_id, model_path, DEBUG=False):
 # * This part of the template needs work to provide a cleaner way to specify contrasts
 # * Could use the same vector contrasts approach as we have in batch8 and then have a function to convert this into the list of list data structure that nipype spm contrasts node looks for
 
-# In[ ]:
+# %%
 
 
 def make_contrast_list(subject_id, condition_names, model_path, DEBUG=False):
@@ -457,7 +458,7 @@ def make_contrast_list(subject_id, condition_names, model_path, DEBUG=False):
 
 # #### Specify model node
 
-# In[ ]:
+# %%
 
 
 # SpecifyModel - Generates SPM-specific Model
@@ -478,7 +479,7 @@ modelspec = pe.Node(model.SpecifySPMModel(concatenate_runs=False,
 # 
 #     `'/data00/tools/spm8/apriori/brainmask_th25.nii'`
 
-# In[ ]:
+# %%
 
 
 # Level1Design - Generates an SPM design matrix
@@ -494,7 +495,7 @@ level1design = pe.Node(spm.Level1Design(bases={'hrf': {'derivs': [0, 0]}},
 
 # #### Estimate Model node
 
-# In[ ]:
+# %%
 
 
 # EstimateModel - estimate the parameters of the model
@@ -504,14 +505,14 @@ level1estimate = pe.Node(spm.EstimateModel(estimation_method={'Classical': 1}),
 
 # #### Estimate Contrasts node
 
-# In[ ]:
+# %%
 
 
 # EstimateContrast - estimates contrasts
 conestimate = pe.Node(spm.EstimateContrast(), name="conestimate")
 
 
-# In[ ]:
+# %%
 
 
 
@@ -519,7 +520,7 @@ conestimate = pe.Node(spm.EstimateContrast(), name="conestimate")
 
 # ## Setup pipeline workflow for level 1 model
 
-# In[ ]:
+# %%
 
 
 # Initiation of the 1st-level analysis workflow
@@ -540,7 +541,7 @@ l1analysis.connect([(modelspec, level1design, [('session_info',
                     ])
 
 
-# In[ ]:
+# %%
 
 
 
@@ -552,13 +553,13 @@ l1analysis.connect([(modelspec, level1design, [('session_info',
 # 
 # * Use `get_subject_info()` function to generate spec data structure for first level model design matrix
 
-# In[ ]:
+# %%
 
 
 
 
 
-# In[ ]:
+# %%
 
 
 # Get Subject Info - get subject specific condition information
@@ -568,7 +569,7 @@ getsubjectinfo = pe.Node(util.Function(input_names=['subject_id', 'model_path'],
                       name='getsubjectinfo')
 
 
-# In[ ]:
+# %%
 
 
 makecontrasts = pe.Node(util.Function(input_names=['subject_id', 'condition_names', 'model_path'],
@@ -581,7 +582,7 @@ makecontrasts = pe.Node(util.Function(input_names=['subject_id', 'condition_name
 # 
 # * iterate over list of subject ids and generate subject ids and produce list of contrasts for subsequent nodes
 
-# In[ ]:
+# %%
 
 
 # Infosource - a function free node to iterate over the list of subject names
@@ -600,7 +601,7 @@ infosource.iterables = [('subject_id', subject_list),
 # 
 # * match template to find source files (functional) for use in subsequent parts of pipeline
 
-# In[ ]:
+# %%
 
 
 # SelectFiles - to grab the data (alternativ to DataGrabber)
@@ -628,7 +629,7 @@ selectfiles = pe.Node(nio.SelectFiles(templates,
 # 
 # * transform `.nii.gz` to `.nii`
 
-# In[ ]:
+# %%
 
 
 gunzip = pe.MapNode(Gunzip(),name="gunzip", iterfield=['in_file'])
@@ -636,7 +637,7 @@ gunzip = pe.MapNode(Gunzip(),name="gunzip", iterfield=['in_file'])
 
 # #### Specify smoothing node
 
-# In[ ]:
+# %%
 
 
 smooth = pe.Node(interface=spm.Smooth(), name="smooth")
@@ -647,7 +648,7 @@ smooth.iterables = ('fwhm', fwhmlist)
 
 # #### Specify resampling node
 
-# In[ ]:
+# %%
 
 
 resample = pe.MapNode(interface=spm.utils.Reslice(), 
@@ -655,13 +656,13 @@ resample = pe.MapNode(interface=spm.utils.Reslice(),
                      iterfield=['in_file'])
 
 
-# In[1]:
+# %%
 
 
 resample.inputs.space_defining = '/data00/projects/megameta/templates/reference_medium_wad.nii'
 
 
-# In[ ]:
+# %%
 
 
 unzip_resample_and_smooth = pe.Workflow(name='unzip_resample_and_smooth')
@@ -680,7 +681,7 @@ unzip_resample_and_smooth.connect(
 # 
 # * copy files to keep from various working folders to output folder for model for subject
 
-# In[ ]:
+# %%
 
 
 # Datasink - creates output folder for important outputs
@@ -706,7 +707,7 @@ datasink.inputs.regexp_substitutions = substitutions
 
 # ## Set up workflow for whole process
 
-# In[ ]:
+# %%
 
 
 pipeline = pe.Workflow(name='first_level_model_{}_{}'.format(TASK_NAME.upper(),MODEL_NAME))
@@ -750,7 +751,7 @@ pipeline.connect([(infosource, selectfiles, [('subject_id', 'subject_id')]),
                   
 
 
-# In[ ]:
+# %%
 
 
 

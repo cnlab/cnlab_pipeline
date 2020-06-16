@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
+# %%
 
 # # Building second level models using _nipype_ and _SPM12_
 # 
@@ -20,7 +21,7 @@
 
 # ### Setup
 
-# In[2]:
+# %%
 
 
 import os  # system functions
@@ -51,7 +52,7 @@ from itertools import product
 # #### Matlab path
 # 
 
-# In[78]:
+# %%
 
 
 # Set the way matlab should be called
@@ -60,7 +61,7 @@ mlab.MatlabCommand.set_default_matlab_cmd("matlab -nodesktop -nosplash")
 mlab.MatlabCommand.set_default_paths(PATH_TO_SPM_FOLDER)
 
 
-# In[79]:
+# %%
 
 
 GROUP_DIR = '/data00/projects/megameta/group_models/'
@@ -68,7 +69,7 @@ GROUP_DIR = '/data00/projects/megameta/group_models/'
 
 # #### Load JSON model config
 
-# In[26]:
+# %%
 
 
 JSON_MODEL_FILE = os.path.join('/data00/projects/megameta/scripts/jupyter_megameta/second_level_models',
@@ -76,14 +77,14 @@ JSON_MODEL_FILE = os.path.join('/data00/projects/megameta/scripts/jupyter_megame
                                MODEL_SPEC_FILE)
 
 
-# In[35]:
+# %%
 
 
 with open(JSON_MODEL_FILE) as fh:
     model_def = json.load(fh)
 
 
-# In[37]:
+# %%
 
 
 MODEL_NAME = model_def['ModelName']
@@ -93,7 +94,7 @@ CONTRASTS = model_def['Contrasts']
 ROOT_DIR = '/data00/projects/megameta'
 
 
-# In[63]:
+# %%
 
 
 l2_contrast_list = CONTRASTS # list of specific contrast files to use in 2nd level model (include .nii?)
@@ -104,7 +105,7 @@ working_dir = os.path.join(GROUP_DIR, 'working',
                            'nipype', 'workingdir_model_2nd-level_{}'.format(MODEL_NAME))   
 
 
-# In[64]:
+# %%
 
 
 if not os.path.exists(output_dir):
@@ -116,7 +117,7 @@ if not os.path.exists(working_dir):
 
 # ## Get list of contrast files
 
-# In[65]:
+# %%
 
 
 def process_project(project_name, model_def=model_def, exclude_subjects=exclude_subjects ,scan_all_subjs=False, DEBUG=False):
@@ -187,7 +188,7 @@ def process_project(project_name, model_def=model_def, exclude_subjects=exclude_
 
 # ## Define nodes
 
-# In[66]:
+# %%
 
 
 # Infosource - a function free node to iterate over the list of subject names
@@ -205,7 +206,7 @@ l2_infosource.iterables = [('contrast_id', l2_contrast_list),
                         ]
 
 
-# In[67]:
+# %%
 
 
 # SelectFiles - to grab the data (alternativ to DataGrabber)
@@ -223,7 +224,7 @@ l2_selectfiles = pe.Node(nio.SelectFiles(l2_templates,
                    name="selectfiles")
 
 
-# In[29]:
+# %%
 
 
 def make_contrast_list(model_path, cname,exclude_subjects, sample_perc=80):
@@ -318,7 +319,7 @@ def make_contrast_list(model_path, cname,exclude_subjects, sample_perc=80):
     return conlist
 
 
-# In[72]:
+# %%
 
 
 l2_getcontrasts = pe.Node(util.Function(input_names=['model_path','cname','exclude_subjects'],
@@ -331,7 +332,7 @@ l2_getcontrasts.inputs.cname=CONTRAST_NAME
 l2_getcontrasts.inputs.exclude_subjects=exclude_subjects
 
 
-# In[30]:
+# %%
 
 
 #EDITED BY CHRISTIN (ADDING DATASINK)
@@ -347,7 +348,7 @@ datasink.inputs.substitutions = substitutions
 
 # ## Model nodes
 
-# In[31]:
+# %%
 
 
 osttdesign = pe.Node(spm.model.OneSampleTTestDesign(),
@@ -357,7 +358,7 @@ osttdesign.inputs.explicit_mask_file='/data00/tools/spm8/apriori/brainmask_th25.
 osttdesign.inputs.threshold_mask_none=True
 
 
-# In[33]:
+# %%
 
 
 #MODEL_SPEC_FILE = 'group_mreg_behav_nonavers.json'
@@ -369,7 +370,7 @@ osttdesign.inputs.threshold_mask_none=True
 #exclude_subjects=[]
 
 
-# In[38]:
+# %%
 
 
 #EDITED BY CHRISTIN TO IMPPLEMENT MREG
@@ -457,7 +458,7 @@ mregdesign.inputs.covariates=covs
 mregdesign.inputs.explicit_mask_file='/data00/tools/spm8/apriori/brainmask_th25.nii'
 
 
-# In[ ]:
+# %%
 
 
 # EstimateModel - estimate the parameters of the model
@@ -466,7 +467,7 @@ level2estimate = pe.Node(spm.model.EstimateModel(estimation_method={'Classical':
 
 
 
-# In[ ]:
+# %%
 
 
 # EstimateContrast - estimates simple group contrast
@@ -474,7 +475,7 @@ level2conestimate = pe.Node(spm.model.EstimateContrast(group_contrast=True),
                          name="level2conestimate")
 
 
-# In[ ]:
+# %%
 
 
 '''
@@ -491,14 +492,14 @@ level2conestimate.inputs.contrasts = [cont]
 
 # ## Setup second level workflow
 
-# In[ ]:
+# %%
 
 
 #l2_working_dir = os.path.join(PROJECT_DIR, 'nipype', 'workingdir_banner_2nd_level')
 l2_working_dir = working_dir
 
 
-# In[ ]:
+# %%
 
 
 # EDITED BY CHRISTIN (adding datasink to the workflow)
