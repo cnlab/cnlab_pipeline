@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # coding: utf-8
 
 # # Building first level models using _nipype_ and _SPM12_
@@ -64,8 +63,6 @@ from nilearn import plotting, image
 from nistats import thresholding
 
 
-from IPython.display import Image
-
 
 import scipy.io as sio
 import numpy as np
@@ -74,9 +71,15 @@ import pandas as pd
 import glob
 
 
+PATH_TO_SPM_FOLDER = '/data00/tools/spm12mega'
+BRAIN_MASK_PATH = '/data00/tools/spm8/apriori/brainmask_th25.nii'
 
 
-def setup_pipeline():
+
+def setup_pipeline(MODEL_PATH, 
+                   exclude_subjects=None,
+                   include_subjects=None,
+                   DEBUG=False):
 
     # Set the way matlab should be called
     mlab.MatlabCommand.set_default_matlab_cmd("matlab -nodesktop -nosplash")
@@ -92,12 +95,7 @@ def setup_pipeline():
     # #### Load JSON model config
 
 
-    JSON_MODEL_FILE = os.path.join('/data00/projects/megameta/scripts/jupyter_megameta/first_level_models',
-                                   PROJECT_NAME, 'model_specifications',
-                                   MODEL_SPEC_FILE)
-
-
-    with open(JSON_MODEL_FILE) as fh:
+    with open(MODEL_PATH) as fh:
         model_def = json.load(fh)
 
 
@@ -106,13 +104,13 @@ def setup_pipeline():
     RUNS = model_def['Runs']
     MODEL_NAME = model_def['ModelName']
     PROJECT_NAME = model_def['ProjectID']
+    BASE_DIR = model_def['BaseDirectory']
 
-    if not model_def.get('TR'):
-        model_def['TR'] = TR
+    TR = model_def['TR']
 
 
-
-    PROJECT_DIR = os.path.join('/data00/projects/megameta', PROJECT_NAME)
+    # TODO - add configurable project paths
+    PROJECT_DIR = os.path.join(BASE_DIR, PROJECT_NAME)
     SUBJ_DIR = os.path.join(PROJECT_DIR, 'derivatives', 'nipype', 'resampled_and_smoothed')
 
     task_func_template = "sr{PID}_task-{TASK}_run-*_*preproc*.nii"
@@ -140,30 +138,39 @@ def setup_pipeline():
 
     try:
         subject_list = [ s for s in subject_list if s not in exclude_subjects ]
-        print('\n\nApplied subject exclusion list:\n\t',' '.join(exclude_subjects))
+        
+        if DEBUG:
+            print('\n\nApplied subject exclusion list:\n\t',' '.join(exclude_subjects))
     except:
-        print('\n\nNo subject exclusions applied')
+        if DEBUG:
+            print('\n\nNo subject exclusions applied')
 
     try:
         subject_list = [ s for s in subject_list if s in include_subjects ]
-        print('\n\nApplied subject inclusion list:\n\t',' '.join(include_subjects))
+        if DEBUG:
+            print('\n\nApplied subject inclusion list:\n\t',' '.join(include_subjects))
     except:
-        print('\n\nNo subject inclusions applied')
+        if DEBUG:
+            print('\n\nNo subject inclusions applied')
+
+    if DEBUG:
+        print('\n\nSUBJECT LIST IS:\n\t', ' '.join(subject_list))
 
 
-    print('\n\nSUBJECT LIST IS:\n\t', ' '.join(subject_list))
+    # add directorys and subject list to dictionary
+    # before return
+    
+    model_def['subject_list']=subject_list
+    model_def['output_dir']=output_dir
+    model_def['working_dir']=working_dir
+    model_def['model_path']=MODEL_PATH
+    model_def['SUBJ_DIR']=SUBJ_DIR
+    model_def['PROJECT_DIR']=PROJECT_DIR
+    
+    return model_def
 
-
-    # ### Utility functions for subject info and contrasts
-
-    # ### Setup design matrix data for subject
-    # 
-    # * need a function to set up the nipype `Bunch` format used
-    #     * https://nipype.readthedocs.io/en/latest/users/model_specification.html
-    # * read the onsets/dur/conditions from task logs and extract needed data
-
-    # In[38]:
-
+    
+# ### Utility functions for subject info and contrasts    
 
 def get_subject_info(subject_id, model_path, DEBUG=False):
     '''
@@ -263,12 +270,13 @@ def get_subject_info(subject_id, model_path, DEBUG=False):
     TASK_RUNS = model_def['Runs'].copy()
     MODEL_NAME = model_def['ModelName']
     PROJECT_ID = model_def['ProjectID']
+    BASE_DIR = model_def['BaseDirectory']
     
     # Collect ModelAsItem conditions across all runs
     ALL_conditions=[]
     condition_names = list(model_def['Conditions'].keys())
    
-    PROJECT_DIR = os.path.join('/data00/projects/megameta', PROJECT_ID)
+    PROJECT_DIR = os.path.join(BASE_DIR, PROJECT_ID)
     FMRIPREP_SUBJ_DIR = os.path.join(PROJECT_DIR,'derivatives', 'fmriprep')
     BATCH8_SUBJ_DIR=os.path.join(PROJECT_DIR,'derivatives','batch8')
     
@@ -479,7 +487,27 @@ def make_contrast_list(subject_id, condition_names, model_path, DEBUG=False):
 # ## Set up processing nodes for modeling workflow
 
 
-def build_pipeline():
+def build_pipeline(model_def):
+    
+    
+    # create pointers to needed values from
+    # the model dictionary
+    # TODO - this could be refactored
+    TR = model_def['TR']
+    subject_list = model_def['subject_list']
+    JSON_MODEL_FILE = model_def['model_path']
+
+    working_dir = model_def['working_dir']
+    output_dir = model_def['output_dir']
+    
+    SUBJ_DIR = model_def['SUBJ_DIR']
+    PROJECT_DIR = model_def['PROJECT_DIR']
+    TASK_NAME = model_def['TaskName']
+    RUNS = model_def['Runs']
+    MODEL_NAME = model_def['ModelName']
+    PROJECT_NAME = model_def['ProjectID']
+    BASE_DIR = model_def['BaseDirectory']
+        
 
     # SpecifyModel - Generates SPM-specific Model
 
@@ -500,7 +528,7 @@ def build_pipeline():
     # 
     #     `'/data00/tools/spm8/apriori/brainmask_th25.nii'`
 
-    # In[ ]:
+
 
 
     # Level1Design - Generates an SPM design matrix
@@ -508,42 +536,26 @@ def build_pipeline():
                                      timing_units='secs',
                                      interscan_interval=TR,
                                      model_serial_correlations='AR(1)', # [none|AR(1)|FAST]',
-                                     mask_image = '/data00/tools/spm8/apriori/brainmask_th25.nii',
+
+                                     # TODO - allow for specified masks
+                                     mask_image = BRAIN_MASK_PATH,
                                      global_intensity_normalization='none'
                                            ),
                         name="level1design")
 
 
     # #### Estimate Model node
-
-    # In[ ]:
-
-
     # EstimateModel - estimate the parameters of the model
     level1estimate = pe.Node(spm.EstimateModel(estimation_method={'Classical': 1}),
                           name="level1estimate")
 
 
     # #### Estimate Contrasts node
-
-    # In[ ]:
-
-
     # EstimateContrast - estimates contrasts
     conestimate = pe.Node(spm.EstimateContrast(), name="conestimate")
 
 
-    # In[ ]:
-
-
-
-
-
     # ## Setup pipeline workflow for level 1 model
-
-    # In[ ]:
-
-
     # Initiation of the 1st-level analysis workflow
     l1analysis = pe.Workflow(name='l1analysis')
 
@@ -562,29 +574,19 @@ def build_pipeline():
                         ])
 
 
-    # In[ ]:
-
-
-
-
-
+ 
     # ## Set up nodes for file handling and subject selection
-
     # ### `getsubjectinfo` node 
     # 
     # * Use `get_subject_info()` function to generate spec data structure for first level model design matrix
 
-    # In[ ]:
-
-
+ 
     # Get Subject Info - get subject specific condition information
     getsubjectinfo = pe.Node(util.Function(input_names=['subject_id', 'model_path'],
                                    output_names=['subject_info', 'realign_params', 'condition_names'],
                                    function=get_subject_info),
                           name='getsubjectinfo')
 
-
-    # In[ ]:
 
 
     makecontrasts = pe.Node(util.Function(input_names=['subject_id', 'condition_names', 'model_path'],
@@ -593,7 +595,6 @@ def build_pipeline():
                         name='makecontrasts')
 
 
-    # In[ ]:
 
 
     if model_def.get('ExcludeDummyScans'):
@@ -611,8 +612,6 @@ def build_pipeline():
     # 
     # * iterate over list of subject ids and generate subject ids and produce list of contrasts for subsequent nodes
 
-    # In[ ]:
-
 
     # Infosource - a function free node to iterate over the list of subject names
     infosource = pe.Node(util.IdentityInterface(fields=['subject_id', 'model_path', 'resolution', 'smoothing']
@@ -620,12 +619,12 @@ def build_pipeline():
                       name="infosource")
 
     try:
-        fwhm_list = smoothing_list
+        fwhm_list = model_def['smoothing_list']
     except:
         fwhm_list = [4,6,8]
 
     try:
-        resolution_list = resolutions
+        resolution_list = model_def['resolutions']
     except:
         resolution_list = ['low','medium','high']
 
@@ -636,22 +635,18 @@ def build_pipeline():
                            ]
 
 
-    # ### `selectfiles` node
-    # 
-    # * match template to find source files (functional) for use in subsequent parts of pipeline
-
-    # In[ ]:
 
 
     # SelectFiles - to grab the data (alternativ to DataGrabber)
-
 
     ## TODO: here need to figure out how to incorporate the run number and task name in call
     templates = {'func': '{subject_id}/{resolution}/{smoothing}/sr{subject_id}_task-'+TASK_NAME+'_run-0*_*MNI*preproc*.nii'}          
 
 
     selectfiles = pe.Node(nio.SelectFiles(templates,
-                                   base_directory='/data00/projects/megameta/{}/derivatives/nipype/resampled_and_smoothed'.format(PROJECT_NAME)),
+                                   base_directory='{}/{}/derivatives/nipype/resampled_and_smoothed'.format(
+                                       BASE_DIR,
+                                       PROJECT_NAME)),
                           working_dir=working_dir,
                        name="selectfiles")
 
@@ -659,9 +654,6 @@ def build_pipeline():
     # ### Specify datasink node
     # 
     # * copy files to keep from various working folders to output folder for model for subject
-
-    # In[ ]:
-
 
     # Datasink - creates output folder for important outputs
     datasink = pe.Node(nio.DataSink(base_directory=SUBJ_DIR,
