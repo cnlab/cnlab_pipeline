@@ -6,6 +6,8 @@
 # 
 # -------
 # #### History
+# * 7/22/20 mbod - made changes to muri branch for testing first level model setup
+# * 6/24/20 mbod - 'muri' branch for adding smoothing pipeline and residuals code
 # * 6/16/20 mbod - saved as a .py script for refactoring
 # * 5/29/20 cscholz - include ModelAsItem functionality 
 # * 5/18/20 hychan - include option for throwing dummy scans (`ExcludeDummyScans`) and excluding sessions (`ExcludeRuns`)
@@ -59,8 +61,8 @@ from nipype.interfaces.nipy.preprocess import Trim
 
 from itertools import combinations
 
-from nilearn import plotting, image
-from nistats import thresholding
+#from nilearn import plotting, image
+#from nistats import thresholding
 
 
 
@@ -111,18 +113,27 @@ def setup_pipeline(MODEL_PATH,
 
     # TODO - add configurable project paths
     PROJECT_DIR = os.path.join(BASE_DIR, PROJECT_NAME)
-    SUBJ_DIR = os.path.join(PROJECT_DIR, 'derivatives', 'nipype', 'resampled_and_smoothed')
-
-    task_func_template = "sr{PID}_task-{TASK}_run-*_*preproc*.nii"
+    
+    # changed - mbod 7-20 from megameta default with resampled folder as starting point
+    # SUBJ_DIR = os.path.join(PROJECT_DIR, 'derivatives', 'nipype', 'resampled_and_smoothed')
+    
+    # TODO - we are going to need some flexibility here for data that is processed
+    # with fmriprep although this going to be the default going forward
+    SUBJ_DIR = os.path.join(PROJECT_DIR, 'data', 'BIDS',
+                            'derivatives', 'fmriprep')
+    
+    # changed - mbod 7-20 from megameta default that was resampled smoothed NIFTI (unziped) file
+    task_func_template = "{PID}_task-{TASK}_run-*_*preproc*.nii.gz"
 
     subject_list = [subj for subj in os.listdir(SUBJ_DIR) 
-                       if glob.glob(os.path.join(SUBJ_DIR,subj,'medium', 'fwhm_8',
+                       if glob.glob(os.path.join(SUBJ_DIR,subj,'func',
                                             task_func_template.format(PID=subj, TASK=TASK_NAME)))
                     ]
-
-    output_dir = os.path.join(PROJECT_DIR,'derivatives', 'nipype','model_{}_{}'.format(TASK_NAME.upper(), MODEL_NAME))        # name of 1st-level output folder
+    # name of 1st-level output folder
+    output_dir = os.path.join(PROJECT_DIR,'derivatives', 'nipype','model_{}_{}'.format(TASK_NAME.upper(), MODEL_NAME))  
+    # name of 1st-level working directory
     working_dir = os.path.join(PROJECT_DIR, 'working', 
-                               'nipype', 'workingdir_model_{}_{}'.format(TASK_NAME.upper(), MODEL_NAME))   # name of 1st-level working directory
+                               'nipype', 'workingdir_model_{}_{}'.format(TASK_NAME.upper(), MODEL_NAME))   
 
 
 
@@ -535,7 +546,7 @@ def build_pipeline(model_def):
     level1design = pe.Node(spm.Level1Design(bases={'hrf': {'derivs': [0, 0]}},
                                      timing_units='secs',
                                      interscan_interval=TR,
-                                     model_serial_correlations='AR(1)', # [none|AR(1)|FAST]',
+                                     model_serial_correlations='FAST', # [none|AR(1)|FAST]',
 
                                      # TODO - allow for specified masks
                                      mask_image = BRAIN_MASK_PATH,
@@ -546,7 +557,8 @@ def build_pipeline(model_def):
 
     # #### Estimate Model node
     # EstimateModel - estimate the parameters of the model
-    level1estimate = pe.Node(spm.EstimateModel(estimation_method={'Classical': 1}),
+    level1estimate = pe.Node(spm.EstimateModel(estimation_method={'Classical': 1},
+                                               write_residuals=True),
                           name="level1estimate")
 
 
@@ -644,7 +656,7 @@ def build_pipeline(model_def):
 
 
     selectfiles = pe.Node(nio.SelectFiles(templates,
-                                   base_directory='{}/{}/derivatives/nipype/resampled_and_smoothed'.format(
+                                   base_directory='{}/{}/data/BIDS/derivatives/fmriprep'.format(
                                        BASE_DIR,
                                        PROJECT_NAME)),
                           working_dir=working_dir,
@@ -672,21 +684,105 @@ def build_pipeline(model_def):
     datasink.inputs.regexp_substitutions = substitutions
 
 
+    
+    # ------
+    
+    ## Unzip and smoothing steps
+
+    # * BIDS derivatives folders contain unsmoothed functional NIFTI files in zipped (.nii.gz) format
+    # * This subflow adds three nodes:
+    #   1. gunzip
+    #   2. resample  <--- @TODO - NOT NEEDED? 
+    #   3. smooth
+    
+  
+    gunzip = pe.MapNode(Gunzip(),name="gunzip", iterfield=['in_file'])
+
+
+    smooth = pe.Node(interface=spm.Smooth(), name="smooth")
+    #fwhmlist = [4,6,8]
+    # @TODO pick smoothing values
+    fwhmlist = [6] if not model_def.get('fwhmlist') else model_def.get('fwhmlist')
+    smooth.iterables = ('fwhm', fwhmlist)
+    
+    
+    '''
+    @TODO REMOVE resample step?
+    
+
+    resample = pe.MapNode(interface=spm.utils.Reslice(), 
+                      name='resample',
+                     iterfield=['in_file'])
+
+    '''
+    
+    unzip_and_smooth = pe.Workflow(name='unzip_and_smooth')
+
+    unzip_and_smooth.base_dir = os.path.join(SUBJ_DIR, working_dir)
+
+    unzip_and_smooth.connect(
+        [
+            (gunzip, smooth, [('out_file', 'in_files')])
+        ]
+    )
+    
+    
+    
     # ---------
 
     # ## Set up workflow for whole process
 
-    # In[ ]:
+    
+    
+
 
 
     pipeline = pe.Workflow(name='first_level_model_{}_{}'.format(TASK_NAME.upper(),MODEL_NAME))
     pipeline.base_dir = os.path.join(SUBJ_DIR, working_dir)
 
+    
+    # pipeline connections
+    
+    # if smoothing and resolution values specified for infosource add
+    # in-out pairs
+    infosource_to_selectfiles = (infosource, selectfiles, [('subject_id', 'subject_id') ])
+    
+    if model_def.get('resolution'):
+        infosource_to_selectfiles[2].append(('resolution', 'resolution'))
+        
+    if model_def.get('smoothing'):
+        infosource_to_selectfiles[2].append(('smoothing', 'smoothing'))
+    
+    
+   
+    # @TODO - fix the trim and smooth selection options
+    # 
+    
+    if model_def.get('unzip_and_smooth'):
+        trimdummyscans_flow1 = (trimdummyscans, unzip_and_smooth, [('out_file','gunzip.in_file')])
+        trimdummyscans_flow2 = (unzip_and_smooth, l1analysis, [('smooth.smoothed_files',
+                                          'modelspec.functional_runs')])
+    else:                
+        trimdummyscans_flow1 = (trimdummyscans, l1analysis, [('out_file',
+                                              'modelspec.functional_runs')])
+        trimdummyscans_flow2 = trimdummyscans_flow1
+                       
+     
+    # datasink connections
+    
+    datasink_in_outs = [('conestimate.spm_mat_file','@spm'),
+                        ('level1estimate.beta_images','@betas'),
+                        ('level1estimate.mask_image','@mask'),
+                        ('conestimate.spmT_images','@spmT'),
+                        ('conestimate.con_images','@con'),
+                        ('conestimate.spmF_images','@spmF')
+                       ]
+    
+    if model_def.get('generate_residuals'):
+        datasink_in_outs.append(('level1estimate.residual_images','@residuals'))
 
-    pipeline.connect([(infosource, selectfiles, [('subject_id', 'subject_id'),
-                                                 ('resolution', 'resolution'),
-                                                 ('smoothing', 'smoothing')
-                                                ]),
+    pipeline.connect([ infosource_to_selectfiles,
+                      
                       (infosource, getsubjectinfo, [('subject_id', 'subject_id'),
                                                     ('model_path', 'model_path')
                                                    ]),
@@ -695,7 +791,7 @@ def build_pipeline(model_def):
                                                   ]),
                       (getsubjectinfo, makecontrasts, [('condition_names', 'condition_names')]),
 
-                     (getsubjectinfo, l1analysis, [('subject_info',
+                      (getsubjectinfo, l1analysis, [('subject_info',
                                                      'modelspec.subject_info'),
                                                     ('realign_params',
                                                        'modelspec.realignment_parameters')]),
@@ -703,23 +799,18 @@ def build_pipeline(model_def):
                                                  'conestimate.contrasts')]),
 
 
-    #                  (selectfiles, l1analysis, [('func',
-    #                                          'modelspec.functional_runs')]),
+                      
                       (selectfiles, trimdummyscans, [('func',
                                               'in_file')]),
 
-                      (trimdummyscans, l1analysis, [('out_file',
-                                              'modelspec.functional_runs')]),
-
+                      
+                      trimdummyscans_flow1,
+                      trimdummyscans_flow2,
+                        
 
                       (infosource, datasink, [('subject_id','container')]),
-                      (l1analysis, datasink, [('conestimate.spm_mat_file','@spm'),
-                                              ('level1estimate.beta_images','@betas'),
-                                              ('level1estimate.mask_image','@mask'),
-                                              ('conestimate.spmT_images','@spmT'),
-                                              ('conestimate.con_images','@con'),
-                                              ('conestimate.spmF_images','@spmF')
-                                             ])
+                      
+                      (l1analysis, datasink, datasink_in_outs)
                      ]
     )
 
