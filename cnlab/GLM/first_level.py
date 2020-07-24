@@ -112,14 +112,14 @@ def setup_pipeline(MODEL_PATH,
 
 
     # TODO - add configurable project paths
-    PROJECT_DIR = os.path.join(BASE_DIR, PROJECT_NAME)
+    PROJECT_DIR = os.path.join(BASE_DIR, PROJECT_NAME, 'data', 'BIDS')
     
     # changed - mbod 7-20 from megameta default with resampled folder as starting point
     # SUBJ_DIR = os.path.join(PROJECT_DIR, 'derivatives', 'nipype', 'resampled_and_smoothed')
     
     # TODO - we are going to need some flexibility here for data that is processed
     # with fmriprep although this going to be the default going forward
-    SUBJ_DIR = os.path.join(PROJECT_DIR, 'data', 'BIDS',
+    SUBJ_DIR = os.path.join(PROJECT_DIR, 
                             'derivatives', 'fmriprep')
     
     # changed - mbod 7-20 from megameta default that was resampled smoothed NIFTI (unziped) file
@@ -287,7 +287,10 @@ def get_subject_info(subject_id, model_path, DEBUG=False):
     ALL_conditions=[]
     condition_names = list(model_def['Conditions'].keys())
    
-    PROJECT_DIR = os.path.join(BASE_DIR, PROJECT_ID)
+    # TODO - check how this links to the model_def created
+    # in the setup function - seems like we are redoing 
+    # 7-20 mbod - need to added add data/BIDS to base project dir
+    PROJECT_DIR = os.path.join(BASE_DIR, PROJECT_ID, 'data', 'BIDS')
     FMRIPREP_SUBJ_DIR = os.path.join(PROJECT_DIR,'derivatives', 'fmriprep')
     BATCH8_SUBJ_DIR=os.path.join(PROJECT_DIR,'derivatives','batch8')
     
@@ -652,7 +655,14 @@ def build_pipeline(model_def):
     # SelectFiles - to grab the data (alternativ to DataGrabber)
 
     ## TODO: here need to figure out how to incorporate the run number and task name in call
-    templates = {'func': '{subject_id}/{resolution}/{smoothing}/sr{subject_id}_task-'+TASK_NAME+'_run-0*_*MNI*preproc*.nii'}          
+    ## 
+    ## TODO - need to although for resolution and smoothing to the template
+    ##        as in the megameta base
+    
+    ##  'func': '{subject_id}/{resolution}/{smoothing}/sr{subject_id}_task-'+TASK_NAME+'_run-0*_*MNI*preproc*.nii'
+    
+    
+    templates = {'func': '{subject_id}/func/{subject_id}_task-'+TASK_NAME+'_run-0*_*MNI*preproc*.nii.gz'}          
 
 
     selectfiles = pe.Node(nio.SelectFiles(templates,
@@ -767,6 +777,27 @@ def build_pipeline(model_def):
                                               'modelspec.functional_runs')])
         trimdummyscans_flow2 = trimdummyscans_flow1
                        
+    
+    # @TODO - tidy this up 
+    # 7/24 mbod added a fileprep workflow
+    '''
+    fileprep = pe.Workflow(name='fileprep')
+
+    fileprep.base_dir = os.path.join(SUBJ_DIR, working_dir)
+
+    fileprep.connect(
+        [
+            # @TODO
+            # ? how to add trimdummy scans into this??
+            
+           
+            (unzip_and_smooth, l1analysis, [('smooth.smoothed_files',
+                                          'modelspec.functional_runs')])
+        ]
+    )
+    '''     
+            
+            
      
     # datasink connections
     
@@ -800,13 +831,11 @@ def build_pipeline(model_def):
 
 
                       
-                      (selectfiles, trimdummyscans, [('func',
-                                              'in_file')]),
+                      (selectfiles, unzip_and_smooth, [('func',
+                                              'gunzip.in_file')]),
 
-                      
-                      trimdummyscans_flow1,
-                      trimdummyscans_flow2,
-                        
+                      (unzip_and_smooth, l1analysis, [('smooth.smoothed_files',
+                                          'modelspec.functional_runs')]),
 
                       (infosource, datasink, [('subject_id','container')]),
                       
