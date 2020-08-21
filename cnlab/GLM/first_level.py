@@ -507,7 +507,9 @@ def build_pipeline(model_def):
     MODEL_NAME = model_def['ModelName']
     PROJECT_NAME = model_def['ProjectID']
     BASE_DIR = model_def['BaseDirectory']
-        
+    
+    SERIAL_CORRELATIONS = "AR(1)" if not model_def.get('SerialCorrelations') else model_def.get('SerialCorrelations')
+    RESIDUALS = model_def.get('GenerateResiduals')
 
     # SpecifyModel - Generates SPM-specific Model
 
@@ -535,7 +537,9 @@ def build_pipeline(model_def):
     level1design = pe.Node(spm.Level1Design(bases={'hrf': {'derivs': [0, 0]}},
                                      timing_units='secs',
                                      interscan_interval=TR,
-                                     model_serial_correlations='AR(1)', # [none|AR(1)|FAST]',
+                                     # model_serial_correlations='AR(1)', # [none|AR(1)|FAST]',
+                                     # 8/21/20 mbod - allow for value to be set in JSON model spec
+                                     model_serial_correlations=SERIAL_CORRELATIONS,   
 
                                      # TODO - allow for specified masks
                                      mask_image = BRAIN_MASK_PATH,
@@ -547,6 +551,9 @@ def build_pipeline(model_def):
     # #### Estimate Model node
     # EstimateModel - estimate the parameters of the model
     level1estimate = pe.Node(spm.EstimateModel(estimation_method={'Classical': 1}),
+                          # 8/21/20 mbod - allow for value to be set in JSON model spec
+                          write_residuals=RESIDUALS,
+                             
                           name="level1estimate")
 
 
@@ -671,12 +678,27 @@ def build_pipeline(model_def):
     substitutions.extend(subjFolders)
     datasink.inputs.regexp_substitutions = substitutions
 
+    
+     # datasink connections
+    
+    datasink_in_outs = [('conestimate.spm_mat_file','@spm'),
+                        ('level1estimate.beta_images','@betas'),
+                        ('level1estimate.mask_image','@mask'),
+                        ('conestimate.spmT_images','@spmT'),
+                        ('conestimate.con_images','@con'),
+                        ('conestimate.spmF_images','@spmF')
+                       ]
+    
+    if model_def.get('GenerateResiduals'):
+        datasink_in_outs.append(('level1estimate.residual_images','@residuals'))   
+    
+    
 
     # ---------
 
     # ## Set up workflow for whole process
 
-    # In[ ]:
+
 
 
     pipeline = pe.Workflow(name='first_level_model_{}_{}'.format(TASK_NAME.upper(),MODEL_NAME))
@@ -712,15 +734,14 @@ def build_pipeline(model_def):
                                               'modelspec.functional_runs')]),
 
 
-                      (infosource, datasink, [('subject_id','container')]),
-                      (l1analysis, datasink, [('conestimate.spm_mat_file','@spm'),
-                                              ('level1estimate.beta_images','@betas'),
-                                              ('level1estimate.mask_image','@mask'),
-                                              ('conestimate.spmT_images','@spmT'),
-                                              ('conestimate.con_images','@con'),
-                                              ('conestimate.spmF_images','@spmF')
-                                             ])
-                     ]
+                      
+                     
+                     
+                     (infosource, datasink, [('subject_id','container')]),
+                      
+                     (l1analysis, datasink, datasink_in_outs)
+                    ]
+                     
     )
 
     
