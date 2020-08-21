@@ -6,6 +6,7 @@
 # 
 # -------
 # #### History
+# * 8/21/20 mbod - updated for residuals and serial corr options
 # * 6/16/20 mbod - saved as a .py script for refactoring
 # * 5/29/20 cscholz - include ModelAsItem functionality 
 # * 5/18/20 hychan - include option for throwing dummy scans (`ExcludeDummyScans`) and excluding sessions (`ExcludeRuns`)
@@ -60,7 +61,6 @@ from nipype.interfaces.nipy.preprocess import Trim
 from itertools import combinations
 
 from nilearn import plotting, image
-from nistats import thresholding
 
 
 
