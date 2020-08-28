@@ -550,9 +550,9 @@ def build_pipeline(model_def):
 
     # #### Estimate Model node
     # EstimateModel - estimate the parameters of the model
-    level1estimate = pe.Node(spm.EstimateModel(estimation_method={'Classical': 1}),
+    level1estimate = pe.Node(spm.EstimateModel(estimation_method={'Classical': 1},
                           # 8/21/20 mbod - allow for value to be set in JSON model spec
-                          write_residuals=RESIDUALS,
+                          write_residuals=RESIDUALS),
                              
                           name="level1estimate")
 
