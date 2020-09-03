@@ -6,6 +6,7 @@
 # 
 # -------
 # #### History
+# * 9/1/20 nc - updated to store more options in json instead of hard coding
 # * 8/21/20 mbod - updated for residuals and serial corr options
 # * 6/16/20 mbod - saved as a .py script for refactoring
 # * 5/29/20 cscholz - include ModelAsItem functionality 
@@ -71,20 +72,12 @@ import pandas as pd
 import glob
 
 
-PATH_TO_SPM_FOLDER = '/data00/tools/spm12mega'
-BRAIN_MASK_PATH = '/data00/tools/spm8/apriori/brainmask_th25.nii'
-
-
 
 def setup_pipeline(MODEL_PATH, 
                    exclude_subjects=None,
                    include_subjects=None,
                    DEBUG=False):
 
-    # Set the way matlab should be called
-    mlab.MatlabCommand.set_default_matlab_cmd("matlab -nodesktop -nosplash")
-    # If SPM is not in your MATLAB path you should add it here
-    mlab.MatlabCommand.set_default_paths(PATH_TO_SPM_FOLDER)
 
 
     # ### Parameters
@@ -98,6 +91,13 @@ def setup_pipeline(MODEL_PATH,
     with open(MODEL_PATH) as fh:
         model_def = json.load(fh)
 
+        
+    PATH_TO_SPM_FOLDER = model_def['SPM_path']
+
+    # Set the way matlab should be called
+    mlab.MatlabCommand.set_default_matlab_cmd("matlab -nodesktop -nosplash")
+    # If SPM is not in your MATLAB path you should add it here
+    mlab.MatlabCommand.set_default_paths(PATH_TO_SPM_FOLDER)
 
 
     TASK_NAME = model_def['TaskName']
@@ -105,7 +105,6 @@ def setup_pipeline(MODEL_PATH,
     MODEL_NAME = model_def['ModelName']
     PROJECT_NAME = model_def['ProjectID']
     BASE_DIR = model_def['BaseDirectory']
-
     TR = model_def['TR']
 
 
@@ -509,6 +508,8 @@ def build_pipeline(model_def):
     BASE_DIR = model_def['BaseDirectory']
     
     SERIAL_CORRELATIONS = "AR(1)" if not model_def.get('SerialCorrelations') else model_def.get('SerialCorrelations')
+    BRAIN_MASK_PATH = model_def['Brainmask_path']
+
     RESIDUALS = model_def.get('GenerateResiduals')
 
     # SpecifyModel - Generates SPM-specific Model
@@ -609,7 +610,9 @@ def build_pipeline(model_def):
     else:
         ExcludeDummyScans = 0
 
-    print(f'Excluding {ExcludeDummyScans} dummy scans.')
+    #if DEBUG:
+    #    print(f'Excluding {ExcludeDummyScans} dummy scans.')
+   
     trimdummyscans = pe.MapNode(Trim(begin_index=ExcludeDummyScans),
                           name='trimdummyscans',
                           iterfield=['in_file'])
