@@ -8,6 +8,7 @@
 # -------
 # #### History
 # 
+# * 09/16/2020 nc - edited .py to allow command line input of JSON file 
 # * 8/31/2020 nc - edited .py to allow command line input of subject list 
 # * 8/27/2020 nc - testing and export to py script
 # * 8/21/2020 mbod - update master branch to do FAST and residuals
@@ -52,24 +53,6 @@ sys.path.append('/data00/projects/megameta/scripts/jupyter_megameta/cnlab_pipeli
 from cnlab.GLM import first_level
 
 
-# ### Set params
-# 
-# * There are some parameters that need to be set
-#     1. `MODEL_SPEC_FILE` is the name of the JSON model file
-#     2. `MODEL_PATH` - at the moment the JSON files have been kept in a folder called `model_specifications` at the same level as the first_level notebook folder - but we could decide of another convention for where to place the JSON file and maybe it should live in the same folder as the notebook/script that runs the model pipeline.
-
-# In[4]:
-
-
-MODEL_SPEC_FILE = 'BA_negative_model_WALKSTATEMENT_message_RFfast.json' # replace with filename of JSON file
-
-MODEL_PATH = os.path.abspath(
-                    os.path.join('../model_specifications',
-                                  MODEL_SPEC_FILE)
-)
-
-
-
 # -------------------------
 # 
 # ### Step 2: Run the `setup_pipeline` function
@@ -94,7 +77,19 @@ MODEL_PATH = os.path.abspath(
 parser = argparse.ArgumentParser()
 parser.add_argument('--include_subjects', default = "NA", nargs='*', help='optional: specify included subjects')
 parser.add_argument('--exclude_subjects', default = "NA", nargs='*', help='optional: specify excluded subjects')
+parser.add_argument('--modelspec', help = 'required: specify the model specification JSON file' )
 args = parser.parse_args()
+
+
+
+MODEL_SPEC_FILE = args.modelspec # filename of JSON file
+
+MODEL_PATH = os.path.abspath(
+                    os.path.join('../model_specifications',
+                                  MODEL_SPEC_FILE)
+)
+
+#add something to throw a warning if the model spec file does not exist?
 
 
 ## ncooper - you could refactor this to be simpler because the setup_pipeline function already
@@ -129,13 +124,6 @@ else:
 print("subject list:")
 print(model_def['subject_list'])
 
-
-# In[9]:  #### TEST IF THESE ARE NECESSARY
-
-
-model_def['unzip_and_smooth']=False
-model_def['resolutions'] = ['medium']
-model_def['smoothing_list'] = [8]
 
 
 # -------------------------
