@@ -1,0 +1,5 @@
+09/01/20
+This code is being developed to replace first level model notebooks. The code uploaded today is tailored to a BA study model. Nicole is working on updating to include some additional flexible features.
+
+11/17/20
+NC - Uploaded first_level_model_wrapper.py, which should work to run first level models on any megameta study (tested on WA). Also uploaded a JSON template illustrating all available options.  
