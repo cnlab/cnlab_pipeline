@@ -1,0 +1,49 @@
+{
+    "Descriptions": [
+        "Mega-meta default pipeline",
+        "6mm FWHM smoothing",
+        "No global scaling",
+        "FAST correlation",
+        "6 motion parameters and framewise displacement",
+        "Outlier: FD > 0.75"
+    ],
+    
+    "Environment": {
+        "job_path": "models",
+        "spm_path": "/data00/tools/spm12mega",
+        "fsl_path": "/data00/tools/fsl"
+    },
+       
+    "IsotropicSmooth": {
+        "fwhm": 6
+    },
+    
+    "SpecifySPMModel": {
+        "input_units": "secs",
+        "output_units": "secs",
+        "high_pass_filter_cutoff": 128,
+        "regressor_names": [
+            [ "TransX", "TransY", "TransZ", "RotX", "RotY", "RotZ", "FramewiseDisplacement" ],
+            [ "trans_x", "trans_y", "trans_z", "rot_x", "rot_y", "rot_z", "framewise_displacement" ]
+        ],
+        "outlier": {
+            "regressor_names": ["trash_FD0.75"]
+        }
+    },
+
+    "Level1Design": {
+        "bases": { "hrf": { "derivs": [0,0] } },
+        "timing_units": "secs",
+        "global_intensity_normalization": "none",
+        "model_serial_correlations": "FAST"
+    },
+    
+    "EstimateModel": {
+        "estimation_method": { "Classical": 1 },
+        "write_residuals": false
+    },
+
+    "EstimateContrast": {
+        "basic_contrasts": true
+    }
+}

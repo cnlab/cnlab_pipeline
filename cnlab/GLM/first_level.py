@@ -6,6 +6,7 @@
 # 
 # -------
 # #### History
+# * 9/1/20 nc - updated to store more options in json instead of hard coding
 # * 8/21/20 mbod - updated for residuals and serial corr options
 # * 6/16/20 mbod - saved as a .py script for refactoring
 # * 5/29/20 cscholz - include ModelAsItem functionality 
@@ -24,19 +25,6 @@
 # 
 # * Set up a nipype workflow to use SPM12 to make first level models for _megameta_ task data (preprocessed using `batch8` SPM8 scripts) in BIDS derivative format   
 # 
-
-# -------------------
-# 
-# ### Template variables
-# 
-# * Specify the following values:
-#     1. project name - should be name of folder under `/data00/project/megameta`, e.g. `project1`
-#     2. filename for JSON model specification (should be inside `model_specification` folder), e.g. `p1_image_pmod_likeme.json`
-#     3. TR value in seconds
-#  
-# 
-# 
-
 # -------------------
 # 
 # ### Setup
@@ -71,20 +59,12 @@ import pandas as pd
 import glob
 
 
-PATH_TO_SPM_FOLDER = '/data00/tools/spm12mega'
-BRAIN_MASK_PATH = '/data00/tools/spm8/apriori/brainmask_th25.nii'
-
-
 
 def setup_pipeline(MODEL_PATH, 
                    exclude_subjects=None,
                    include_subjects=None,
                    DEBUG=False):
 
-    # Set the way matlab should be called
-    mlab.MatlabCommand.set_default_matlab_cmd("matlab -nodesktop -nosplash")
-    # If SPM is not in your MATLAB path you should add it here
-    mlab.MatlabCommand.set_default_paths(PATH_TO_SPM_FOLDER)
 
 
     # ### Parameters
@@ -98,6 +78,13 @@ def setup_pipeline(MODEL_PATH,
     with open(MODEL_PATH) as fh:
         model_def = json.load(fh)
 
+        
+    PATH_TO_SPM_FOLDER = model_def['SPM_path']
+
+    # Set the way matlab should be called
+    mlab.MatlabCommand.set_default_matlab_cmd("matlab -nodesktop -nosplash")
+    # If SPM is not in your MATLAB path you should add it here
+    mlab.MatlabCommand.set_default_paths(PATH_TO_SPM_FOLDER)
 
 
     TASK_NAME = model_def['TaskName']
@@ -105,7 +92,6 @@ def setup_pipeline(MODEL_PATH,
     MODEL_NAME = model_def['ModelName']
     PROJECT_NAME = model_def['ProjectID']
     BASE_DIR = model_def['BaseDirectory']
-
     TR = model_def['TR']
 
 
@@ -310,7 +296,7 @@ def get_subject_info(subject_id, model_path, DEBUG=False):
 
     else:
         ExcludeDummyScans = 0
-        TR = 0
+        TR = 0 ## this is set to 0 here for calculation of dropped scan TRs. It's set to what is present in the JSON in the build pipeline module
 
     if model_def.get('ExcludeRuns'):
         ExcludeRuns = model_def['ExcludeRuns']
@@ -509,6 +495,8 @@ def build_pipeline(model_def):
     BASE_DIR = model_def['BaseDirectory']
     
     SERIAL_CORRELATIONS = "AR(1)" if not model_def.get('SerialCorrelations') else model_def.get('SerialCorrelations')
+    BRAIN_MASK_PATH = model_def['Brainmask_path']
+
     RESIDUALS = model_def.get('GenerateResiduals')
 
     # SpecifyModel - Generates SPM-specific Model
@@ -550,9 +538,9 @@ def build_pipeline(model_def):
 
     # #### Estimate Model node
     # EstimateModel - estimate the parameters of the model
-    level1estimate = pe.Node(spm.EstimateModel(estimation_method={'Classical': 1}),
+    level1estimate = pe.Node(spm.EstimateModel(estimation_method={'Classical': 1},
                           # 8/21/20 mbod - allow for value to be set in JSON model spec
-                          write_residuals=RESIDUALS,
+                          write_residuals=RESIDUALS),
                              
                           name="level1estimate")
 
@@ -609,7 +597,9 @@ def build_pipeline(model_def):
     else:
         ExcludeDummyScans = 0
 
-    print(f'Excluding {ExcludeDummyScans} dummy scans.')
+    #if DEBUG:
+    #    print(f'Excluding {ExcludeDummyScans} dummy scans.')
+   
     trimdummyscans = pe.MapNode(Trim(begin_index=ExcludeDummyScans),
                           name='trimdummyscans',
                           iterfield=['in_file'])
