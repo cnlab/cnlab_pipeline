@@ -25,19 +25,6 @@
 # 
 # * Set up a nipype workflow to use SPM12 to make first level models for _megameta_ task data (preprocessed using `batch8` SPM8 scripts) in BIDS derivative format   
 # 
-
-# -------------------
-# 
-# ### Template variables
-# 
-# * Specify the following values:
-#     1. project name - should be name of folder under `/data00/project/megameta`, e.g. `project1`
-#     2. filename for JSON model specification (should be inside `model_specification` folder), e.g. `p1_image_pmod_likeme.json`
-#     3. TR value in seconds
-#  
-# 
-# 
-
 # -------------------
 # 
 # ### Setup
@@ -309,7 +296,7 @@ def get_subject_info(subject_id, model_path, DEBUG=False):
 
     else:
         ExcludeDummyScans = 0
-        TR = 0
+        TR = 0 ## this is set to 0 here for calculation of dropped scan TRs. It's set to what is present in the JSON in the build pipeline module
 
     if model_def.get('ExcludeRuns'):
         ExcludeRuns = model_def['ExcludeRuns']
