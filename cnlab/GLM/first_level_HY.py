@@ -10,7 +10,6 @@ import nipype.pipeline.engine as pe
 import nipype.algorithms.modelgen as model
 from nipype.interfaces.base import Bunch
 from nipype.algorithms.misc import Gunzip
-from nipype.interfaces.utility import IdentityInterface
 
 import pandas as pd
 import numpy as np
@@ -121,15 +120,10 @@ def build_pipeline(job, inSingularity=False):
     if job.get("IsotropicSmooth"):
         isotropicsmooth_args = job['IsotropicSmooth']
         preproc = pe.MapNode(interface=fsl.IsotropicSmooth(**isotropicsmooth_args), iterfield='in_file', name="smooth")
-        preproc.inputs.in_file = [os.path.join(env['data_path'], func_file) for func_file in job['SpecifySPMModel']['functional_runs']]
-        
-    elif job['SpecifySPMModel']['functional_runs'][0].endswith('.gz'):
-        preproc = pe.MapNode(interface=Gunzip(), iterfield='in_file', name="gunzip")
-        preproc.inputs.in_file = [os.path.join(env['data_path'], func_file) for func_file in job['SpecifySPMModel']['functional_runs']]
-        
     else:
-        preproc = pe.MapNode(interface=IdentityInterface(fields=['out_file']), iterfield='out_file', name="identity")
-        preproc.inputs.out_file = [os.path.join(env['data_path'], func_file) for func_file in job['SpecifySPMModel']['functional_runs']]
+        preproc = pe.MapNode(interface=Gunzip(), iterfield='in_file', name="gunzip")
+    
+    preproc.inputs.in_file = [os.path.join(env['data_path'], func_file) for func_file in job['SpecifySPMModel']['functional_runs']]
 
     # SpecifySPMModel - Generates SPM-specific model
     modelspec_args = make_model(job['SpecifySPMModel'], **env)
