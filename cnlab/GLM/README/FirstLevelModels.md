@@ -20,7 +20,9 @@
   * "include_event" and "exclude_event" can be used when the user does not want to model all event types specified in the events file (for example, if fixation is specified as an event category, and the user wants to exclude this from explicit modeling)
 * Contrast specification
   * The contrasts field expects as input: name of the contrast, statistic (T), the names of the regressors to be contrasted, and the contrast coding      
-     
+
+## Note on events.tsv files
+* The BIDS default is for there to be a single set of events.tsv files for any task. Given the variety of adaptations on events.tsv we've seen in our lab, the current setup allows for flexibility in the events.tsv files and also stores a copy of the final events file for each model (*naming in discussion*). Events.tsv is specified in the model-task level json, but can be overridden by specifying a different file in the model-specific json. Further, a definitive events file is saved out within each model folder for later reference (e.g., /data00/projects/megameta/BA/models/task-walkstatement_model-message/events).
 
  
 # STEP 2 - Create slurm jobs for running first level models
