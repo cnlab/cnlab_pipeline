@@ -6,6 +6,8 @@
     * See data00/projects/megameta/scripts/jupyter_megameta/l1analysis/darpa1/task-share.json
   * A model-level specification file. This should be edited for each model. This includes specification of mapping or melting components of the events.tsv into regressors, and specification of contrasts.
     * See data00/projects/megameta/scripts/jupyter_megameta/l1analysis/darpa1/task-share_model-bin3.json
+ * If a model differs from the study-task or base defaults (e.g., a different smoothing kernel is desired, or a different set of motion regressors), those features can be specified in the model-level json file and will override the defaults 
+ * All specification options are described in data00/projects/megameta/scripts/jupyter_megameta/cnlab_pipeline/cnlab/GLM/description.json. Some of these are specific to our lab, but many refer back to nipype options
 * File organization (*under discussion*)
  * The base level json files live in data00/projects/megameta/scripts/jupyter_megameta/l1analysis
  * Study-task and model level json files live in a study specific sub-folder, e.g. data00/projects/megameta/scripts/jupyter_megameta/l1analysis/darpa1
