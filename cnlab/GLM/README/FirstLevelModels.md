@@ -14,11 +14,12 @@
    * Study-task and model level json files live in a study specific sub-folder, e.g. data00/projects/megameta/scripts/jupyter_megameta/l1analysis/darpa1
 
 ## Notes on specification options of particular interest
-     * "map_event" groups multiple event categories into one regressor
-     * "melt_event" generates individual events such as single-trial betas
-     * "include_event" and "exclude_event" can be used when the user does not want to model all event types specified in the events file (for example, if fixation is specified as an event category, and the user wants to exclude this from explicit modeling)
-   * Notes on specifying contrasts
-     * The contrasts field expects as input: name of the contrast, statistic (T), the names of the regressors to be contrasted, and the contrast coding      
+* Regressor specification
+  * "map_event" groups multiple event categories into one regressor
+  * "melt_event" generates individual events such as single-trial betas
+  * "include_event" and "exclude_event" can be used when the user does not want to model all event types specified in the events file (for example, if fixation is specified as an event category, and the user wants to exclude this from explicit modeling)
+* Contrast specification
+  * The contrasts field expects as input: name of the contrast, statistic (T), the names of the regressors to be contrasted, and the contrast coding      
      
 
  
