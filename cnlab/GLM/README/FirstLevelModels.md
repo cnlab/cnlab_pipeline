@@ -32,12 +32,14 @@
 # STEP 3 - Execute and monitor slurm jobs 
 * To submit the jobs (and run the models), log on to the slurm cluster, and follow the notebook instructions - change directory to, e.g., /data00/projects/megameta/product/models/task-ARF_model-bin3/slurm. Each job can be pasted separately at the command line. 
 * Logging on to slurm
- * Connect to the ASC VPN
- * Open a terminal window on your computer
- * Type: ssh <JANUS_UN>@asc.upenn.edu@cls000 - - replace your JANUS username, and enter your JANUS password when prompted
-  * If you get a prompt “The authenticity of host 'cls000 (10.30.12.140)' can't be established. … Are you sure you want to continue connecting (yes/no)” → type yes
-
-
+  * Connect to the ASC VPN
+  * Open a terminal window on your computer
+  * Type: ssh <JANUS_UN>@asc.upenn.edu@cls000 - - replace your JANUS username, and enter your JANUS password when prompted
+    * If you get a prompt “The authenticity of host 'cls000 (10.30.12.140)' can't be established. … Are you sure you want to continue connecting (yes/no)” → type yes
+* Monitoring jobs in the queue
+  * Type "squeue" to see what jobs are in the queue (currently being processed or waiting to be processed)
+  * Errors will be written into files with a .err extension (e.g., sub-BA277.err) within an "out" directory nested in the relevant slurm directory (e.g., /data00/projects/megameta/BA/models/task-walkstatement_model-message/slurm/out)
+  * View the .err files in any file viewer
 
 
 # STEP 4 - Check model output 
