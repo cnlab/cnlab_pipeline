@@ -13,13 +13,18 @@
    * The base level json files live in data00/projects/megameta/scripts/jupyter_megameta/l1analysis
    * Study-task and model level json files live in a study specific sub-folder, e.g. data00/projects/megameta/scripts/jupyter_megameta/l1analysis/darpa1
 
+## Overview of first-level analysis
+* The analysis pipeline is a lightweight wrapper of the `nipype` package. The analysis flow is:
+- IsotropicSmooth (optional) (https://nipype.readthedocs.io/en/latest/api/generated/nipype.interfaces.fsl.maths.html#isotropicsmooth)
+
+
 ## Notes on specification options of particular interest
 * Regressor specification
   * "map_event" groups multiple event categories into one regressor
   * "melt_event" generates individual events such as single-trial betas
   * "include_event" and "exclude_event" can be used when the user does not want to model all event types specified in the events file (for example, if fixation is specified as an event category, and the user wants to exclude this from explicit modeling)
 * Contrast specification
-  * The contrasts field expects as input: name of the contrast, statistic (T), the names of the regressors to be contrasted, and the contrast coding      
+  * The contrasts field expects as input: name of the contrast, statistic (T), the names of the regressors to be contrasted, and the contrast coding (see  https://nipype.readthedocs.io/en/latest/api/generated/nipype.interfaces.spm.model.html#estimatecontrast)     
 
 ## Note on events.tsv files
 * The BIDS default is for there to be a single set of events.tsv files for any task. Given the variety of adaptations on events.tsv we've seen in our lab, the current setup allows for flexibility in the events.tsv files and also stores a copy of the final events file for each model (*naming in discussion*). Events.tsv is specified in the model-task level json, but can be overridden by specifying a different file in the model-specific json. Further, a definitive events file is saved out within each model folder for later reference (e.g., /data00/projects/megameta/BA/models/task-walkstatement_model-message/events).
