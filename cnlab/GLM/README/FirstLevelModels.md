@@ -1,6 +1,6 @@
 # STEP 1 - Set up model specification json(s) 
 ## Model specification structure
-* Three separate json files (analysis, task, job) contribute to model specifications; only one should be edited for most models. 
+* Three separate json files (analysis, task, job) contribute to model specifications. The analysis and task files are relatively stable; only the job json file should be created for each analysis instance. 
   * The **analysis template** containing components of model specification that have (lab-wide) defaults for a specific analysis type (e.g., regular GLM with 8mm smoothing, or single-trial beta with no smoothing for MVPA). This includes environment paths, model components like smoothing kernel, high pass filter cutoff and motion regressors, and design features like the HRF basis and modeling of serial correlations.
     * See data00/projects/megameta/scripts/jupyter_megameta/l1analysis/template-megameta.json
   * The **task template** should contain particular information for each task in a study. This includes information like the number of task runs, the TR, which subjects/runs to exclude from modeling, and the locations of the functional, event, and motion regressor files. 
