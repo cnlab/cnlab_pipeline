@@ -53,7 +53,7 @@
         },
 
         "pmod": "a dict where (key = event name) and (value = pmod regressor name)",
-        "pmod_options": "an array containing a series of operations to be executed for each pmod: rank / minmax_scale / zscore"
+        "pmod_options": "an array containing a series of operations to be executed for each pmod: fillna / rank / minmax_scale / zscore"
     },
 
     "Level1Design": {

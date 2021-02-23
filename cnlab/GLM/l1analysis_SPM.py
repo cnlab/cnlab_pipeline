@@ -15,6 +15,8 @@ from nipype.interfaces.utility import IdentityInterface
 import pandas as pd
 import numpy as np
 
+import nibabel as nib
+
 def ensure_list(obj):
     if type(obj) is not list:
         return [obj]
@@ -27,10 +29,14 @@ def make_model(model_info, **env):
     
     subject_info = []
     
-    for event_file, regressor_file in zip(modelspec_args['event_files'], modelspec_args['regressors']):
+    for event_file, regressor_file, func_file in zip(modelspec_args['event_files'], modelspec_args['regressors'], modelspec_args['functional_runs']):
+        
+        func_img = nib.load(os.path.join(env['data_path'], func_file))
+        tr_max = func_img.header.get_data_shape()[-1] * modelspec_args['time_repetition']
         
         event = (pd.read_csv(os.path.join(env['data_path'], event_file), sep='\t')
-                 .query('onset > 0')
+                 .query('onset >= 0')
+                 .query(f'onset <= {tr_max}')
                  .sort_values(by='onset')
                  .reset_index(drop=True))
 
@@ -145,40 +151,43 @@ def build_pipeline(job, inSingularity=False):
     level1estimate_args = job['EstimateModel']
     level1estimate = pe.Node(spm.EstimateModel(**level1estimate_args), name="level1estimate")
 
+    l1analysis_io = [(modelspec, level1design, [('session_info', 'session_info')]),
+                     (level1design, level1estimate, [('spm_mat_file', 'spm_mat_file')])]
+
+    datasink_io = [('level1estimate.beta_images','@betas'),
+                   ('level1estimate.mask_image','@mask'),
+                   ('level1estimate.residual_images','@residuals')]
+
     # EstimateContrast - estimates contrasts
-    conestimate_args = job['EstimateContrast']
-    conestimate_args['contrasts'] = [tuple(contrast) for contrast in conestimate_args['contrasts']]
-    conestimate = pe.Node(spm.EstimateContrast(**conestimate_args), name="conestimate")
-
-    # Initiation of the 1st-level analysis workflow
-    l1analysis = pe.Workflow(base_dir=env['working_path'], name='l1analysis')
-    l1analysis.connect([(modelspec, level1design, [('session_info',
-                                                    'session_info')]),
-                        (level1design, level1estimate, [('spm_mat_file',
-                                                         'spm_mat_file')]),
-                        (level1estimate, conestimate, [('spm_mat_file',
-                                                        'spm_mat_file'),
-                                                       ('beta_images',
-                                                        'beta_images'),
-                                                       ('residual_image',
-                                                        'residual_image')])
-                        ])
-
-    # Datasink - creates output folder for important outputs
-    datasink = pe.Node(nio.DataSink(base_directory=env['output_path'], container="sub-"+job['Info']["sub"]), name="datasink")
-    datasink_io = [('conestimate.spm_mat_file','@spm'),
-                        ('level1estimate.beta_images','@betas'),
-                        ('level1estimate.mask_image','@mask'),
-                        ('level1estimate.residual_images','@residuals'),
+    if len(job.get('EstimateContrast',{}).get('contrasts',[])) > 0:
+        conestimate_args = job['EstimateContrast']
+        conestimate_args['contrasts'] = [tuple(contrast) for contrast in conestimate_args['contrasts']]
+        conestimate = pe.Node(spm.EstimateContrast(**conestimate_args), name="conestimate")
+        
+        l1analysis_io += [(level1estimate, conestimate, [('spm_mat_file', 'spm_mat_file'),
+                                                         ('beta_images', 'beta_images'),
+                                                         ('residual_image', 'residual_image')])]
+                                                            
+        datasink_io += [('conestimate.spm_mat_file','@spm'),
                         ('conestimate.con_images','@con'),
                         ('conestimate.spmT_images','@spmT'),
                         ('conestimate.spmF_images','@spmF')]
-        
+    else:
+        datasink_io += [('level1estimate.spm_mat_file','@spm')]                                                 
+
+    # Initiation of the 1st-level analysis workflow
+    l1analysis = pe.Workflow(base_dir=env['working_path'], name='l1analysis')
+    l1analysis.connect(l1analysis_io)
+
+    # Datasink - creates output folder for important outputs
+    datasink = pe.Node(nio.DataSink(base_directory=env['output_path'], container="sub-"+job['Info']["sub"]), name="datasink")
+    
+    # Putting everything together into a single pipeline
     pipeline = pe.Workflow(base_dir=env['working_path'], name="sub-"+job['Info']["sub"])
-    pipeline.connect([
-                (preproc, l1analysis, [('out_file', 'modelspec.functional_runs')]),
-                (l1analysis, datasink, datasink_io)
-        ])
+    
+    pipeline.connect([(preproc, l1analysis, [('out_file', 'modelspec.functional_runs')]),
+                      (l1analysis, datasink, datasink_io)])
+    
     return pipeline
 
 if __name__ == "__main__":
