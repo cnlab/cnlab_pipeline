@@ -14,18 +14,24 @@
    * Task and job level json files live in a study specific sub-folder, e.g. data00/projects/megameta/scripts/jupyter_megameta/l1analysis/darpa1
 
 ## Overview of first-level analysis pipeline
-The analysis pipeline is a lightweight wrapper of the `nipype` package. The analysis flow is (click on links to see details of the modules):
+The pre-determined analysis pipeline is a lightweight wrapper of the following `nipype` packages (click on links to see details of the modules):
 1. Smoothing (optional) - [IsotropicSmooth](https://nipype.readthedocs.io/en/latest/api/generated/nipype.interfaces.fsl.maths.html#isotropicsmooth)
 2. Specify SPM model - [SpecifySPMModel](https://nipype.readthedocs.io/en/latest/api/generated/nipype.algorithms.modelgen.html#specifyspmmodel)
 3. Generate design matrix - [Level1Design](https://nipype.readthedocs.io/en/latest/api/generated/nipype.interfaces.spm.model.html#level1design)
 4. Estimate model - [EstimateModel](https://nipype.readthedocs.io/en/latest/api/generated/nipype.interfaces.spm.model.html#estimatemodel)
-5. Estimate contrast - [EstimateContrast](https://nipype.readthedocs.io/en/latest/api/generated/nipype.interfaces.spm.model.html#estimateconstrast)
+5. Estimate contrast (optional) - [EstimateContrast](https://nipype.readthedocs.io/en/latest/api/generated/nipype.interfaces.spm.model.html#estimateconstrast)
 
 ## Notes on specification options of particular interest
-* Regressor specification
+Operations can be specified when generating events, outliers and parametric modulations during the `SpecifySPMModel` node:
+* Event operations (`event_options`):
   * `map_event` groups multiple event categories into one regressor
   * `melt_event` generates individual events such as single-trial betas
   * `include_event` and `exclude_event` can be used when the user does not want to model all event types specified in the events file (for example, if fixation is specified as an event category, and the user wants to exclude this from explicit modeling)
+* Outlier operations (`outliers`):
+  * `dummy_scan` specifies the number of scans from the beginning to be marked as outliers
+  * `regressor_names` specifies the names of regressors that indicate outliers
+* Parametric modulator specification (`pmod_options`):
+  * A series of operations can be executed for each pmod variable: `fillna` / `rank` / `minmax_scale` / `zscore`
 * Contrast specification
   * The contrasts field expects as input: name of the contrast, statistic (T), the names of the regressors to be contrasted, and the contrast coding (click [here](https://nipype.readthedocs.io/en/latest/api/generated/nipype.interfaces.spm.model.html#estimatecontrast) for details).     
 
