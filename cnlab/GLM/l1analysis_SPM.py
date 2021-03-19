@@ -212,12 +212,10 @@ if __name__ == "__main__":
         mlab.MatlabCommand.set_default_paths(spm_path)
 
         fsl_path = job['Environment']['fsl_path']
-        if os.environ.get('FSLDIR') is None:
-            path_sep = ":"
-            
-            paths = os.environ.get('PATH',"").split(path_sep)
+        if os.environ.get('FSLDIR') is None:            
+            paths = os.environ.get('PATH',"").split(os.pathsep)
             paths.append(os.path.join(fsl_path, "bin"))
-            os.environ['PATH'] = path_sep.join(paths)
+            os.environ['PATH'] = os.pathsep.join(paths)
             
     os.environ['FSLOUTPUTTYPE'] = 'NIFTI'        
 
