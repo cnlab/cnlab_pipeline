@@ -1,0 +1,48 @@
+{
+	"Descriptions": "a string or an array of strings to describe the model",
+
+	"Template": "(absolute path) template JSON file path",
+
+	"Environment": {
+		"spm_path": "(absolute path) SPM installation path; not required when run in Singularity image",
+		"fsl_path": "(absolute path) FSL installation path; not required when run in Singularity image",
+		"data_path": "(absolute path) data folder",
+		"output_path": "(absolute path) output folder",
+		"working_path": "(absolute path) working folder",
+		"job_path": "(relative path) subfolder under data folder to store all job, event, slurm and outlier files"
+	},
+
+	"Info": {
+		"task": "task name",
+		"model": "model name"
+	},
+
+	"SecondLevel": {
+
+		"force_update": "(a boolean, default False): Whether to force update contrast.csv (a master list of all first-level contrasts)",
+
+		"job": [{
+			"name": "name of analysis; if omitted, will be named '{analysis}_{contrast}'",
+			"analysis": "analysis to be done, can be one of: OneSampleTTestDesign, PairedTTestDesign, TwoSampleTTestDesign, MultipleRegressionDesign",
+			"contrast": "contrast name, or a list of two contrast names for PairedTTestDesign or TwoSampleTTestDesign",
+
+			"covariate_file": "(absolute path) a CSV or TSV file containing a 'sub' column indicating participant ID, and covariates",
+			"covariate_names": "variables to be used for covariates; if omitted, all variables found in covariate_file",
+			"covariate_centering": "(optional) a dict where key = covariate_name and value = centering, available centering options: 'overall_mean', 'factor1_mean', 'factor2_mean', 'factor3_mean', 'no_centering', 'user_specified', 'as_implied_by_ancova', 'gm'; if omitted, overall_mean",
+
+			"groups": "(TwoSampleTTestDesign only) a list of two lists of participants",
+			"grouping_variable": "(TwoSampleTTestDesign only) grouping variable in the covariate file (only two levels allowed)",
+
+			"include_intercept": "* (MultipleRegressionDesign only; a boolean, nipype default value: True) Include intercept in design",
+			"dependent": "* (TwoSampleTTestDesign only; a boolean) Are the measurements dependent between levels",
+            
+            "explicit_mask_file": "* (absolute path) – Use an implicit mask file to threshold.",
+            "global_calc_mean": "* (a boolean) – Use mean for global calculation. Mutually exclusive with inputs: global_calc_omit, global_calc_values.",
+            "global_calc_omit": "* (a boolean) – Omit global calculation. Mutually exclusive with inputs: global_calc_mean, global_calc_values.",
+            "global_calc_values": "* (a list of items which are a float) – Omit global calculation. Mutually exclusive with inputs: global_calc_mean, global_calc_omit.",
+            "global_normalization": "* (1 or 2 or 3) – Global normalization None-1, Proportional-2, ANCOVA-3.",
+            
+			"l2_contrasts": "a list of custom second-level contrasts, in the form [(‘name’, ‘stat’, [condition list], [weight list], [session list])]; by default, basic contrasts are generated"
+		}]
+	}
+}
