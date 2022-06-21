@@ -1,0 +1,11 @@
+#!/bin/bash
+
+mriqc=/data00/tools/singularity_images/mriqc-0.15.1.simg
+bids_dir=/data00/projects/bbprime/data/bids_data
+output_dir=/data00/projects/bbprime/data/mriqc
+
+singularity run --cleanenv \
+    -B /data00/projects/bbprime/data/bids_data:/data \
+    -B /data00/projects/bbprime/data/bids_data/derivatives/mriqc:/out  \
+    /data00/tools/singularity_images/mriqc-0.15.1.simg /data /out \
+    participant --participant-label BPP68

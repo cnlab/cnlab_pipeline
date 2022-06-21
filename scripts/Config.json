@@ -1,0 +1,17 @@
+{
+    "Description": {
+        "project_name": "test_project"
+    },
+    
+    "Environment": {
+        "project_path": "/data00/projects/{project_name}",
+        
+        "bids_data_directory": "data/bids_data",
+        "bids_script_directory": "scripts/BIDS",
+        
+        "raw_path": "/fmriDataRaw/fmri_data_raw", 
+        "heudiconv_image_path": "/data00/tools/singularity_images/heudiconv_0.8.0",
+        "spm_path": "/data00/tools/spm12mega",
+        "fsl_path": "/data00/tools/fsl"
+    }
+}
