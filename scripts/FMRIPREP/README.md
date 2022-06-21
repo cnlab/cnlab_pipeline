@@ -1,0 +1,1 @@
+This directory contains scripts to preprocess the data using fMRIPrep.
